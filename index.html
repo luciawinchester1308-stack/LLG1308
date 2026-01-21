@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Custom Formula Calculator</title>
 
-  <!-- PWA -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#2ecc71" />
 
@@ -23,22 +22,22 @@
       padding: 24px;
       border-radius: 12px;
       box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-      width: 420px;
+      width: 460px;
       text-align: center;
     }
     h1 { font-size: 1.4rem; margin-bottom: 10px; }
     .formula {
       font-family: monospace;
       background: #f0f0f0;
-      padding: 8px;
+      padding: 10px;
       border-radius: 6px;
-      margin: 10px 0;
+      margin: 12px 0;
     }
     .row { margin-bottom: 10px; }
     input {
       padding: 6px;
       font-size: 0.95rem;
-      width: 140px;
+      width: 120px;
     }
     .time { color: #555; margin-bottom: 6px; }
     .result { font-size: 1.3rem; font-weight: bold; margin-top: 12px; }
@@ -63,13 +62,19 @@
 </head>
 <body>
   <div class="card">
-    <h1>Custom Formula Calculator</h1>
+    <h1>Fully Custom Formula Calculator</h1>
 
-    <div class="formula" id="formula">f(n) = n / (K − n)</div>
+    <div class="formula" id="formula"></div>
 
     <div class="row">
-      <div class="time">Set K value:</div>
-      <input type="number" id="kValue" value="100" min="1" />
+      <div class="time">Formula parameters:</div>
+      a · n / (K − n) + b
+    </div>
+
+    <div class="row">
+      a = <input type="number" id="aValue" value="1" step="0.1"> &nbsp;
+      K = <input type="number" id="kValue" value="100" min="1"> &nbsp;
+      b = <input type="number" id="bValue" value="0" step="0.1">
     </div>
 
     <div class="row">
@@ -99,7 +104,9 @@
     const formulaEl = document.getElementById('formula');
 
     const startClockInput = document.getElementById('startClock');
+    const aInput = document.getElementById('aValue');
     const kInput = document.getElementById('kValue');
+    const bInput = document.getElementById('bValue');
 
     const pauseBtn = document.getElementById('pauseBtn');
     const resumeBtn = document.getElementById('resumeBtn');
@@ -111,11 +118,13 @@
     let paused = false;
 
     function updateFormula() {
+      const a = Number(aInput.value);
       const K = Number(kInput.value);
-      formulaEl.textContent = `f(n) = n / (${K} − n)`;
+      const b = Number(bInput.value);
+      formulaEl.textContent = `f(n) = ${a} · n / (${K} − n) + ${b}`;
     }
 
-    kInput.addEventListener('input', updateFormula);
+    [aInput, kInput, bInput].forEach(i => i.addEventListener('input', updateFormula));
     updateFormula();
 
     function setStartFromClock() {
@@ -144,7 +153,9 @@
     function update() {
       if (paused) return;
 
+      const a = Number(aInput.value);
       const K = Number(kInput.value);
+      const b = Number(bInput.value);
       const n = getElapsedMinutes();
 
       minutesEl.textContent = `Minutes passed: ${n.toFixed(2)}`;
@@ -162,11 +173,44 @@
       }
 
       warningEl.textContent = '';
-      const value = n / (K - n);
-      resultEl.textContent = `Result: ${value.toFixed(4)}`;
+      const value = a * n / (K - n) + b;
+      resultEl.textContent = `Result: ${value.toFixed(6)}`;}`;
     }
 
-    setInterval(update, 1000);
+    // Save & restore state
+    function saveState() {
+      localStorage.setItem('formulaState', JSON.stringify({
+        a: aInput.value,
+        K: kInput.value,
+        b: bInput.value,
+        startTime,
+        totalPausedTime,
+        paused
+      }));
+    }
+
+    function loadState() {
+      const state = JSON.parse(localStorage.getItem('formulaState'));
+      if (!state) return;
+      aInput.value = state.a;
+      kInput.value = state.K;
+      bInput.value = state.b;
+      startTime = state.startTime;
+      totalPausedTime = state.totalPausedTime;
+      paused = state.paused;
+      resumeBtn.disabled = !paused;
+      pauseBtn.disabled = paused;
+      updateFormula();
+    }
+
+    [aInput, kInput, bInput].forEach(i => i.addEventListener('input', saveState));
+
+    setInterval(() => {
+      update();
+      saveState();
+    }, 1000);
+
+    loadState();
     update();
 
     pauseBtn.onclick = () => {
